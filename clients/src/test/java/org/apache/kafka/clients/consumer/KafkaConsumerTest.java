@@ -508,13 +508,17 @@ public class KafkaConsumerTest {
 
         final KafkaConsumer<String, String> consumer = newConsumer(time, client, subscription, metadata, assignor, true, groupInstanceId);
         consumer.subscribe(singleton(topic), getConsumerRebalanceListener(consumer));
-        prepareRebalance(client, node, assignor, singletonList(tp0), null);
+        // Since we would enable the heartbeat thread after received join-response which could
+        // send the sync-group on behalf of the consumer if it is enqueued, we may still complete
+        // the rebalance and send out the fetch; in order to avoid it we do not prepare sync response here.
+        client.prepareResponseFrom(FindCoordinatorResponse.prepareResponse(Errors.NONE, node), node);
+        Node coordinator = new Node(Integer.MAX_VALUE - node.id(), node.host(), node.port());
+        client.prepareResponseFrom(joinGroupFollowerResponse(assignor, 1, memberId, leaderId, Errors.NONE), coordinator);
 
         consumer.poll(Duration.ZERO);
 
-        // The underlying client should NOT get a fetch request
         final Queue<ClientRequest> requests = client.requests();
-        Assert.assertEquals(0, requests.size());
+        Assert.assertEquals(0, requests.stream().filter(request -> request.apiKey().equals(ApiKeys.FETCH)).count());
     }
 
     @SuppressWarnings("deprecation")
@@ -591,7 +595,7 @@ public class KafkaConsumerTest {
                 return timestamps.get(tp0).timestamp == ListOffsetRequest.LATEST_TIMESTAMP &&
                         timestamps.get(tp1).timestamp == ListOffsetRequest.EARLIEST_TIMESTAMP;
             }, listOffsetsResponse(Collections.singletonMap(tp0, 50L),
-                        Collections.singletonMap(tp1, Errors.NOT_LEADER_FOR_PARTITION)));
+                        Collections.singletonMap(tp1, Errors.NOT_LEADER_OR_FOLLOWER)));
         client.prepareResponse(
             body -> {
                 FetchRequest request = (FetchRequest) body;
@@ -1253,9 +1257,6 @@ public class KafkaConsumerTest {
         time.sleep(heartbeatIntervalMs);
         TestUtils.waitForCondition(heartbeatReceived::get, "Heartbeat response did not occur within timeout.");
 
-        consumer.updateAssignmentMetadataIfNeeded(time.timer(Long.MAX_VALUE));
-        assertTrue(heartbeatReceived.get());
-
         RuntimeException unsubscribeException = assertThrows(RuntimeException.class, consumer::unsubscribe);
         assertEquals(partitionLost + singleTopicPartition, unsubscribeException.getCause().getMessage());
     }
@@ -1838,14 +1839,19 @@ public class KafkaConsumerTest {
         initMetadata(client, Utils.mkMap(Utils.mkEntry(topic, 1), Utils.mkEntry(topic2, 1), Utils.mkEntry(topic3, 1)));
 
         consumer.subscribe(Arrays.asList(topic, topic2), getConsumerRebalanceListener(consumer));
+
         Node node = metadata.fetch().nodes().get(0);
         Node coordinator = prepareRebalance(client, node, assignor, Arrays.asList(tp0, t2p0), null);
 
-        // a first rebalance to get the assignment, we need two poll calls since we need two round trips to finish join / sync-group
-        consumer.poll(Duration.ZERO);
+        // a first poll with zero millisecond would not complete the rebalance
         consumer.poll(Duration.ZERO);
 
         assertEquals(Utils.mkSet(topic, topic2), consumer.subscription());
+        assertEquals(Collections.emptySet(), consumer.assignment());
+
+        // a second poll with non-zero milliseconds would complete three round-trips (discover, join, sync)
+        consumer.poll(Duration.ofMillis(100L));
+
         assertEquals(Utils.mkSet(tp0, t2p0), consumer.assignment());
 
         // prepare a response of the outstanding fetch so that we have data available on the next poll
