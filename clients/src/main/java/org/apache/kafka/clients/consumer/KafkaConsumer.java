@@ -1176,8 +1176,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      *
      *
      * @param timeout The maximum time to block (must not be greater than {@link Long#MAX_VALUE} milliseconds)
+     *                阻塞的最大时间
      *
      * @return map of topic to records since the last fetch for the subscribed list of topics and partitions
+     *          自上次获取主题和分区的订阅列表以来
+     *          主题到记录的映射
      *
      * @throws org.apache.kafka.clients.consumer.InvalidOffsetException if the offset for a partition or set of
      *             partitions is undefined or out of range and no offset reset policy has been configured

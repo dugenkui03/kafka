@@ -84,6 +84,7 @@ public class ConsumerRecords<K, V> implements Iterable<ConsumerRecord<K, V>> {
 
     /**
      * The number of records for all topics
+     * 所有主题的记录数量
      */
     public int count() {
         int count = 0;
