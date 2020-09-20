@@ -28,8 +28,14 @@ import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * 生产者示例。todo: 1.发送消息的链路；2. 怎样调用到回调动作的。
+ */
 public class Producer extends Thread {
+    // 组合的方式
     private final KafkaProducer<Integer, String> producer;
+
+    // topic、是否异步、记录数量，"倒计时锁"
     private final String topic;
     private final Boolean isAsync;
     private int numRecords;
@@ -37,11 +43,12 @@ public class Producer extends Thread {
 
     public Producer(final String topic,
                     final Boolean isAsync,
-                    final String transactionalId,
+                    final String transactionalId, // 事务id
                     final boolean enableIdempotency,
                     final int numRecords,
                     final int transactionTimeoutMs,
                     final CountDownLatch latch) {
+        // 生产者的配置
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaProperties.KAFKA_SERVER_URL + ":" + KafkaProperties.KAFKA_SERVER_PORT);
         props.put(ProducerConfig.CLIENT_ID_CONFIG, "DemoProducer");
@@ -55,13 +62,17 @@ public class Producer extends Thread {
         }
         props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, enableIdempotency);
 
+        // fixme 使用属性对象Properties创建kafka生产者
         producer = new KafkaProducer<>(props);
+
+        // 额外的记录下topic、是否异步、记录数和"倒计时锁"
         this.topic = topic;
         this.isAsync = isAsync;
         this.numRecords = numRecords;
         this.latch = latch;
     }
 
+    // 获取内部的生产者对象
     KafkaProducer<Integer, String> get() {
         return producer;
     }
@@ -73,21 +84,28 @@ public class Producer extends Thread {
         while (recordsSent < numRecords) {
             String messageStr = "Message_" + messageKey;
             long startTime = System.currentTimeMillis();
-            if (isAsync) { // Send asynchronously
-                producer.send(new ProducerRecord<>(topic,
-                    messageKey,
-                    messageStr), new DemoCallBack(startTime, messageKey, messageStr));
-            } else { // Send synchronously
+
+            // fixme Send asynchronously：异步发送消息
+            if (isAsync) {
+                producer.send(
+                        // fixme 目标topic、消息key、消息内容
+                        new ProducerRecord<>(topic, messageKey, messageStr),
+                        // fixme 服务端确认消息后，执行的异步动作
+                        new DemoCallBack(startTime, messageKey, messageStr)
+                );
+            }
+            // Send synchronously：同步发送消息
+            else {
                 try {
-                    producer.send(new ProducerRecord<>(topic,
-                        messageKey,
-                        messageStr)).get();
+                    // 发送消息
+                    producer.send(new ProducerRecord<>(topic, messageKey, messageStr)).get();
                     System.out.println("Sent message: (" + messageKey + ", " + messageStr + ")");
                 } catch (InterruptedException | ExecutionException e) {
                     e.printStackTrace();
                 }
             }
             messageKey += 2;
+            // 发送的消息数量递增
             recordsSent += 1;
         }
         System.out.println("Producer sent " + numRecords + " records successfully");
@@ -95,6 +113,9 @@ public class Producer extends Thread {
     }
 }
 
+/**
+ * 回调示例
+ */
 class DemoCallBack implements Callback {
 
     private final long startTime;
@@ -108,9 +129,10 @@ class DemoCallBack implements Callback {
     }
 
     /**
-     * A callback method the user can implement to provide asynchronous handling of request completion. This method will
-     * be called when the record sent to the server has been acknowledged. When exception is not null in the callback,
-     * metadata will contain the special -1 value for all fields except for topicPartition, which will be valid.
+     * A callback method the user can implement to provide asynchronous handling of request completion.
+     * This method will be called when the record sent to the server has been acknowledged.
+     * When exception is not null in the callback, metadata will contain the special -1 value
+     * for all fields except for topicPartition, which will be valid.
      *
      * @param metadata  The metadata for the record that was sent (i.e. the partition and offset). An empty metadata
      *                  with -1 value for all fields except for topicPartition will be returned if an error occurred.

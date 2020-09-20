@@ -23,9 +23,13 @@ package org.apache.kafka.clients.producer;
 public interface Callback {
 
     /**
-     * A callback method the user can implement to provide asynchronous handling of request completion. This method will
-     * be called when the record sent to the server has been acknowledged. When exception is not null in the callback,
-     * metadata will contain the special -1 value for all fields except for topicPartition, which will be valid.
+     * A callback method the user can implement to provide asynchronous handling of request completion.
+     * This method will be called when the record sent to the server has been acknowledged.
+     * When exception is not null in the callback, metadata will contain the special -1 value
+     * for all fields except for topicPartition, which will be valid.
+     *
+     * fixme
+     *      当元数据被服务端确认的时候，执行该方法
      *
      * @param metadata The metadata for the record that was sent (i.e. the partition and offset). An empty metadata
      *                 with -1 value for all fields except for topicPartition will be returned if an error occurred.

@@ -1255,12 +1255,18 @@ public final class Utils {
     }
 
     /**
-     * Convert a properties to map. All keys in properties must be string type. Otherwise, a ConfigException is thrown.
+     * Convert a properties to map. All keys in properties must be string type.
+     * Otherwise, a ConfigException is thrown.
+     *
+     * fixme
+     *      将一个properties对象转换为map、key必须是String
+     *
      * @param properties to be converted
      * @return a map including all elements in properties
      */
     public static Map<String, Object> propsToMap(Properties properties) {
         Map<String, Object> map = new HashMap<>(properties.size());
+        // properties.entrySet()：Properties继承了HashTable和Map接口
         for (Map.Entry<Object, Object> entry : properties.entrySet()) {
             if (entry.getKey() instanceof String) {
                 String k = (String) entry.getKey();

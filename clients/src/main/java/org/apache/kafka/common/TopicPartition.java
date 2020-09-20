@@ -21,6 +21,8 @@ import java.util.Objects;
 
 /**
  * A topic name and partition number
+ *
+ * topic名称和分区值
  */
 public final class TopicPartition implements Serializable {
     private static final long serialVersionUID = -613627415771699627L;

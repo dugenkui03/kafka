@@ -23,14 +23,21 @@ import org.apache.kafka.common.requests.ProduceResponse;
 
 /**
  * The metadata for a record that has been acknowledged by the server
+ *
+ * 服务端已经确认接受的元数据。
  */
 public final class RecordMetadata {
 
     /**
-     * Partition value for record without partition assigned
+     * Partition(分区) value for record without partition assigned
+     *
+     * 未分配分区的 "记录的分区值"：未知的分区
      */
     public static final int UNKNOWN_PARTITION = -1;
 
+    /**
+     * 偏移量、时间戳、序列化key大小、序列化value大小、topic分区
+     */
     private final long offset;
     // The timestamp of the message.
     // If LogAppendTime is used for the topic, the timestamp will be the timestamp returned by the broker.

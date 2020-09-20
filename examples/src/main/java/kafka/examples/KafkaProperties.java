@@ -16,6 +16,7 @@
  */
 package kafka.examples;
 
+// 示例属性：topic、服务端主机、服务端端口号
 public class KafkaProperties {
     public static final String TOPIC = "topic1";
     public static final String KAFKA_SERVER_URL = "localhost";
